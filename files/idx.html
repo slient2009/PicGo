@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>学员请假</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; }
+        
+        /* 配置台样式 */
+        #configPage { padding: 15px; background: #fff; min-height: 100vh; box-sizing: border-box; }
+        .config-header { font-size: 18px; font-weight: bold; margin-bottom: 15px; border-bottom: 2px solid #43b0aa; padding-bottom: 8px; color: #333; }
+        .section-title { font-size: 15px; font-weight: bold; margin: 15px 0 8px 0; color: #43b0aa; display: flex; justify-content: space-between; align-items: center; }
+        .form-inline { display: flex; gap: 10px; margin-bottom: 10px; }
+        .form-inline input { flex: 1; padding: 8px; border: 1px solid #ccc; border-radius: 4px; font-size: 14px; }
+        
+        /* 配置页的卡片编辑器 */
+        .edit-card { background: #f8f9fa; border: 1px dashed #ccc; padding: 12px; border-radius: 6px; margin-bottom: 12px; position: relative; }
+        .edit-card .delete-btn { position: absolute; right: 10px; top: 10px; color: red; border: none; background: none; font-size: 14px; font-weight: bold; }
+        .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 6px; }
+        .form-grid input, .form-grid select { padding: 6px; border: 1px solid #ddd; border-radius: 4px; font-size: 13px; width: 100%; box-sizing: border-box; }
+        .full-width { grid-column: span 2; }
+        .btn-add-record { background: #e0f2f1; color: #00796b; border: 1px solid #b2dfdb; padding: 8px; width: 100%; border-radius: 6px; font-weight: bold; font-size: 14px; margin-bottom: 20px; }
+        .btn-generate { background: #43b0aa; color: white; border: none; padding: 12px; width: 100%; border-radius: 6px; font-weight: bold; font-size: 16px; position: sticky; bottom: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+
+        /* ---------------- 高仿前端界面样式 ---------------- */
+        #previewPage { display: none; background-color: #f4f6f9; min-height: 100vh; padding-bottom: 30px; }
+        .header { background-color: #ffffff; padding: 15px; text-align: center; font-size: 18px; font-weight: bold; position: relative; color: #333; border-bottom: 1px solid #eef1f6; }
+        .back-btn { position: absolute; left: 15px; top: 12px; font-size: 24px; text-decoration: none; color: #333; }
+        .stats-bar { background-color: #ffffff; padding: 12px 15px; display: flex; justify-content: space-between; align-items: center; }
+        .stats-info { font-size: 13px; color: #333; line-height: 1.4; }
+        .todo-text { font-size: 12px; color: #ff9800; margin-top: 2px; }
+        .add-btn { background-color: #43b0aa; color: white; border: none; padding: 7px 12px; border-radius: 4px; font-size: 13px; }
+        
+        /* 请假卡片 */
+        .card { background: white; border: 1px solid #ffe8cc; border-radius: 8px; margin: 12px; padding: 15px; font-size: 14px; color: #333; line-height: 1.7; }
+        .card-row { margin-bottom: 1px; }
+        .badge-passed { border: 1px solid #4caf50; color: #4caf50; background: #e8f5e9; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-left: 6px; }
+        .badge-cancelled { border: 1px solid #81c784; color: #81c784; background: #f1f8e9; padding: 1px 5px; border-radius: 3px; font-size: 11px; font-weight: bold; margin-left: 4px; }
+        .reason-text { color: #888; margin-left: 4px; }
+        .normal-status { color: #4caf50; font-size: 13px; }
+        
+        .bottom-line { text-align: center; color: #999; font-size: 12px; margin: 20px 0; display: flex; align-items: center; justify-content: center; }
+        .bottom-line::before, .bottom-line::after { content: ""; flex: 1; height: 1px; background: #ddd; margin: 0 15px; max-width: 60px; }
+    </style>
+</head>
+<body>
+
+    <div id="configPage">
+        <div class="config-header">请假界面自定义配置台</div>
+        
+        <div class="section-title">顶部课时统计设置</div>
+        <div class="form-inline">
+            <input type="number" id="cfgDoneHours" value="0" placeholder="已请假课时">
+            <input type="number" id="cfgTotalHours" value="828" placeholder="总课时">
+        </div>
+
+        <div class="section-title">
+            <span>请假记录列表自定义</span>
+            <button class="btn-add-record" style="width:auto; margin:0; padding:4px 10px;" onclick="addRecordEditor()">+ 加一笔</button>
+        </div>
+        
+        <div id="recordsEditorContainer"></div>
+
+        <button class="btn-generate" onclick="generateUI()">生成界面</button>
+    </div>
+
+
+    <div id="previewPage">
+        <div class="header">
+            <a href="#" class="back-btn" onclick="backToConfig()">‹</a>
+            学员请假
+        </div>
+
+        <div class="stats-bar">
+            <div class="stats-info">
+                <div>我的请假：<span id="uiTotalCount">0</span>个 &nbsp; 已请假课时/总课时：<span id="uiHoursStr">0/828</span></div>
+                <div class="todo-text">待办事项：您当前有<span id="uiTodoCount">0</span>个请假待销假</div>
+            </div>
+            <button class="add-btn" onclick="backToConfig()">新增请假</button>
+        </div>
+
+        <div id="uiLeaveList"></div>
+
+        <div class="bottom-line" id="uiBottomLine">底线附近（共0条数据）</div>
+    </div>
+
+
+    <script>
+        // 预设的 4 条初始默认数据（对应你原图的内容，但这里可以任意被用户修改）
+        const defaultRecords = [
+            { name: "name", className: "数字化建运x班", reason: "事假", start: "2026-05-18 10:00", end: "2026-05-18 17:00", hours: 0, status: "1" },
+            { name: "name", className: "数字化建运x班", reason: "修眼镜", start: "2026-05-10 12:00", end: "2026-05-10 20:00", hours: 0, status: "1" },
+            { name: "name", className: "数字化建运x班", reason: "办身份证", start: "2026-04-22 14:00", end: "2026-04-22 18:30", hours: 0, status: "2" },
+            { name: "name", className: "数字化建运x班", reason: "打疫苗", start: "2026-04-19 15:00", end: "2026-04-19 16:00", hours: 0, status: "2" }
+        ];
+
+        // 页面初始化：加载默认的 4 条编辑卡片
+        window.onload = function() {
+            defaultRecords.forEach(rec => addRecordEditor(rec));
+        };
+
+        // 动态在配置页创建一条“可编辑的请假表单卡片”
+        function addRecordEditor(data = null) {
+            const container = document.getElementById('recordsEditorContainer');
+            const cardId = 'edit_card_' + Date.now() + Math.random().toString(36).substr(2, 5);
+
+            const card = document.createElement('div');
+            card.className = 'edit-card';
+            card.id = cardId;
+
+            // 格式化时间填入
+            const name = data ? data.name : "name";
+            const className = data ? data.className : "数字化建运x班";
+            const reason = data ? data.reason : "";
+            const start = data ? data.start : "2026-05-19 12:00";
+            const end = data ? data.end : "2026-05-19 13:00";
+            const hours = data ? data.hours : 0;
+            const status = data ? data.status : "1";
+
+            card.innerHTML = `
+                <button class="delete-btn" onclick="document.getElementById('${cardId}').remove()">✕ 删除</button>
+                <div class="form-grid">
+                    <input type="text" class="rec-name" value="${name}" placeholder="姓名">
+                    <input type="text" class="rec-class" value="${className}" placeholder="班级">
+                    <input type="text" class="rec-reason full-width" value="${reason}" placeholder="请假原因（例如：因事 外出）">
+                    <input type="text" class="rec-start" value="${start}" placeholder="开始时间 (YYYY-MM-DD HH:MM)">
+                    <input type="text" class="rec-end" value="${end}" placeholder="结束时间 (YYYY-MM-DD HH:MM)">
+                    <input type="number" class="rec-hours" value="${hours}" placeholder="课时">
+                    <select class="rec-status">
+                        <option value="1" ${status==="1"?'selected':''}>已通过 (待销假)</option>
+                        <option value="2" ${status==="2"?'selected':''}>已通过 + 已销假</option>
+                    </select>
+                </div>
+            `;
+            container.appendChild(card);
+        }
+
+        // 读取配置台的数据，打包生成真正的高仿 UI
+        function generateUI() {
+            const editorCards = document.querySelectorAll('#recordsEditorContainer .edit-card');
+            const uiLeaveList = document.getElementById('uiLeaveList');
+            uiLeaveList.innerHTML = ''; // 清空上一轮生成的列表
+
+            let totalCount = editorCards.length;
+            let todoCount = 0;
+            let doneHours = document.getElementById('cfgDoneHours').value || 0;
+            let totalHours = document.getElementById('cfgTotalHours').value || 828;
+
+            // 遍历配置页里的每一个卡片表单
+            editorCards.forEach(card => {
+                const name = card.querySelector('.rec-name').value;
+                const className = card.querySelector('.rec-class').value;
+                const reason = card.querySelector('.rec-reason').value || "有事情";
+                const start = card.querySelector('.rec-start').value;
+                const end = card.querySelector('.rec-end').value;
+                const hours = card.querySelector('.rec-hours').value || 0;
+                const status = card.querySelector('.rec-status').value;
+
+                // 组装单个仿制卡片
+                const uiCard = document.createElement('div');
+                uiCard.className = 'card';
+
+                let badgeHTML = `<span class="badge-passed">✓已通过</span>`;
+                let cancelHTML = '';
+
+                if (status === "2") {
+                    badgeHTML += `<span class="badge-cancelled">已销假</span>`;
+                    cancelHTML = `<div class="card-row">销假详情：<span class="normal-status">(状态正常)</span></div>`;
+                } else {
+                    todoCount++; // 如果是未销假，待办数量加 1
+                }
+
+                uiCard.innerHTML = `
+                    <div class="card-row">请假人：${name} ${badgeHTML}</div>
+                    <div class="card-row">班级：${className}</div>
+                    <div class="card-row">请假原因：因事<span class="reason-text">${reason}</span></div>
+                    <div class="card-row">请假时间：${start}~${end}</div>
+                    <div class="card-row">请假课时：${hours}</div>
+                    ${cancelHTML}
+                `;
+                uiLeaveList.appendChild(uiCard);
+            });
+
+            // 写入顶部统计和底线
+            document.getElementById('uiTotalCount').innerText = totalCount;
+            document.getElementById('uiHoursStr').innerText = `${doneHours}/${totalHours}`;
+            document.getElementById('uiTodoCount').innerText = todoCount;
+            document.getElementById('uiBottomLine').innerText = `底线附近（共${totalCount}条数据）`;
+
+            // 页面切换隐藏
+            document.getElementById('configPage').style.display = 'none';
+            document.getElementById('previewPage').style.display = 'block';
+            window.scrollTo(0, 0);
+        }
+
+        // 返回配置页修改
+        function backToConfig() {
+            document.getElementById('configPage').style.display = 'block';
+            document.getElementById('previewPage').style.display = 'none';
+        }
+    </script>
+</body>
+</html>
